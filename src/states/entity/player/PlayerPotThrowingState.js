@@ -31,6 +31,7 @@ export default class PlayerPotThrowingState extends State {
 
   enter(parameters) {
     this.pot = parameters.pot;
+    this.player.positionOffset = { x: 0, y: 0 };
     this.player.sprites = this.player.liftingSprites;
     this.player.currentAnimation = this.animation[this.player.direction];
 

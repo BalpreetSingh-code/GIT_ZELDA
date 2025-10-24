@@ -16,7 +16,7 @@ export default class ThrownPot extends GameObject {
   static SPEED = 200; // Pixels per second
   static MAX_DISTANCE = Tile.TILE_SIZE * 4; // Travel 4 tiles max
   static DAMAGE = 1;
-  static POT_SPRITE_INDEX = 0; // Intact pot sprite
+  static POT_SPRITE_INDEX = 8; // Intact pot sprite
   // Shatter animation sprites (adjust these based on your pots.png layout)
   static SHATTER_SPRITES = [4, 5, 6, 7]; // Example: broken pot pieces
 

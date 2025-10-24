@@ -20,19 +20,29 @@ export default class PlayerPotCarryingState extends State {
     this.player = player;
     this.pot = null;
 
-    // Carrying animation
-    this.animation = {
+    // Walking animation when moving
+    this.walkingAnimation = {
       [Direction.Up]: new Animation([8, 9, 10, 11], 0.2),
       [Direction.Down]: new Animation([0, 1, 2, 3], 0.2),
       [Direction.Left]: new Animation([12, 13, 14, 15], 0.2),
       [Direction.Right]: new Animation([4, 5, 6, 7], 0.2),
     };
+
+    // Idle animation when standing still (single frame)
+    this.idleAnimation = {
+      [Direction.Up]: new Animation([8], 1),
+      [Direction.Down]: new Animation([0], 1),
+      [Direction.Left]: new Animation([12], 1),
+      [Direction.Right]: new Animation([4], 1),
+    };
   }
 
   enter(parameters) {
     this.pot = parameters.pot;
+    this.player.positionOffset = { x: 0, y: 0 };
     this.player.sprites = this.player.carryingSprites;
-    this.player.currentAnimation = this.animation[this.player.direction];
+    this.player.currentAnimation = this.idleAnimation[this.player.direction]; // Start with idle
+    this.player.currentAnimation.refresh();
     this.player.isCarryingPot = true;
   }
 
@@ -88,8 +98,12 @@ export default class PlayerPotCarryingState extends State {
       }
     }
 
+    // Switch between walking and idle animation
     if (isMoving) {
-      this.player.currentAnimation = this.animation[this.player.direction];
+      this.player.currentAnimation =
+        this.walkingAnimation[this.player.direction];
+    } else {
+      this.player.currentAnimation = this.idleAnimation[this.player.direction];
     }
   }
 

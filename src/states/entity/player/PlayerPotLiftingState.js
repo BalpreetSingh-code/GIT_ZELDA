@@ -6,20 +6,14 @@ import PlayerStateName from "../../../enums/PlayerStateName.js";
 import { timer } from "../../../globals.js";
 
 export default class PlayerPotLiftingState extends State {
-  static LIFT_DURATION = 0.4; // Duration of lift animation in seconds
+  static LIFT_DURATION = 0.4;
 
-  /**
-   * In this state, the player lifts a pot above their head.
-   *
-   * @param {Player} player
-   */
   constructor(player) {
     super();
 
     this.player = player;
     this.pot = null;
 
-    // Lifting animation
     this.animation = {
       [Direction.Up]: new Animation([8, 9, 10, 11], 0.1, 1),
       [Direction.Down]: new Animation([0, 1, 2, 3], 0.1, 1),
@@ -30,16 +24,19 @@ export default class PlayerPotLiftingState extends State {
 
   enter(parameters) {
     this.pot = parameters.pot;
+
+    // Set position offset BEFORE changing sprites
+    this.player.positionOffset = { x: 0, y: 0 };
+
     this.player.sprites = this.player.liftingSprites;
     this.player.currentAnimation = this.animation[this.player.direction];
+    this.player.currentAnimation.refresh();
 
-    // Mark pot as being lifted
     if (this.pot) {
       this.pot.isBeingCarried = true;
       this.pot.carrier = this.player;
-      this.pot.isSolid = false; // Can't collide while being carried
+      this.pot.isSolid = false;
 
-      // Tween pot position to above player's head
       timer.tween(
         this.pot.position,
         {
@@ -47,7 +44,7 @@ export default class PlayerPotLiftingState extends State {
             this.player.position.x +
             this.player.dimensions.x / 2 -
             this.pot.dimensions.x / 2,
-          y: this.player.position.y - this.pot.dimensions.y - 4,
+          y: this.player.position.y - this.pot.dimensions.y + 10,
         },
         PlayerPotLiftingState.LIFT_DURATION
       );
@@ -66,8 +63,6 @@ export default class PlayerPotLiftingState extends State {
 
   async startTimer() {
     await timer.wait(PlayerPotLiftingState.LIFT_DURATION);
-
-    // Transition to carrying state
     this.player.changeState(PlayerStateName.PotCarrying, { pot: this.pot });
   }
 }
