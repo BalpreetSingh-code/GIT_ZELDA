@@ -7,12 +7,10 @@ import PlayerStateName from "../../../enums/PlayerStateName.js";
 import { input } from "../../../globals.js";
 import Room from "../../../objects/Room.js";
 
-export default class PlayerWalkingState extends State {
+export default class PlayerPotCarryingState extends State {
   /**
-   * In this state, the player can move around using the
-   * directional keys. From here, the player can go idle
-   * if no keys are being pressed. The player can also swing
-   * their sword if they press the spacebar.
+   * In this state, the player carries a pot above their head.
+   * They can move around but cannot swing their sword.
    *
    * @param {Player} player
    */
@@ -20,6 +18,9 @@ export default class PlayerWalkingState extends State {
     super();
 
     this.player = player;
+    this.pot = null;
+
+    // Carrying animation
     this.animation = {
       [Direction.Up]: new Animation([8, 9, 10, 11], 0.2),
       [Direction.Down]: new Animation([0, 1, 2, 3], 0.2),
@@ -28,22 +29,29 @@ export default class PlayerWalkingState extends State {
     };
   }
 
-  enter() {
-    this.player.sprites = this.player.walkingSprites;
+  enter(parameters) {
+    this.pot = parameters.pot;
+    this.player.sprites = this.player.carryingSprites;
     this.player.currentAnimation = this.animation[this.player.direction];
+    this.player.isCarryingPot = true;
+  }
+
+  exit() {
+    this.player.isCarryingPot = false;
   }
 
   update(dt) {
     this.handleMovement(dt);
-    this.handleSwordSwing();
+    this.handlePotThrow();
   }
 
   handleMovement(dt) {
-    this.player.currentAnimation = this.animation[this.player.direction];
+    let isMoving = false;
 
     if (input.isKeyPressed(Input.KEYS.S)) {
       this.player.direction = Direction.Down;
       this.player.position.y += this.player.speed * dt;
+      isMoving = true;
 
       if (
         this.player.position.y + this.player.dimensions.y >=
@@ -54,6 +62,7 @@ export default class PlayerWalkingState extends State {
     } else if (input.isKeyPressed(Input.KEYS.D)) {
       this.player.direction = Direction.Right;
       this.player.position.x += this.player.speed * dt;
+      isMoving = true;
 
       if (
         this.player.position.x + this.player.dimensions.x >=
@@ -64,6 +73,7 @@ export default class PlayerWalkingState extends State {
     } else if (input.isKeyPressed(Input.KEYS.W)) {
       this.player.direction = Direction.Up;
       this.player.position.y -= this.player.speed * dt;
+      isMoving = true;
 
       if (this.player.position.y <= Room.TOP_EDGE - this.player.dimensions.y) {
         this.player.position.y = Room.TOP_EDGE - this.player.dimensions.y;
@@ -71,18 +81,21 @@ export default class PlayerWalkingState extends State {
     } else if (input.isKeyPressed(Input.KEYS.A)) {
       this.player.direction = Direction.Left;
       this.player.position.x -= this.player.speed * dt;
+      isMoving = true;
 
       if (this.player.position.x <= Room.LEFT_EDGE) {
         this.player.position.x = Room.LEFT_EDGE;
       }
-    } else {
-      this.player.changeState(PlayerStateName.Idle);
+    }
+
+    if (isMoving) {
+      this.player.currentAnimation = this.animation[this.player.direction];
     }
   }
 
-  handleSwordSwing() {
-    if (input.isKeyPressed(Input.KEYS.SPACE) && !this.player.isCarryingPot) {
-      this.player.changeState(PlayerStateName.SwordSwinging);
+  handlePotThrow() {
+    if (input.isKeyPressed(Input.KEYS.ENTER)) {
+      this.player.changeState(PlayerStateName.PotThrowing, { pot: this.pot });
     }
   }
 }

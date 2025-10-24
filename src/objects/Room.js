@@ -13,6 +13,7 @@ import { CANVAS_HEIGHT, CANVAS_WIDTH, images } from "../globals.js";
 import Doorway from "./Doorway.js";
 import Switch from "./Switch.js";
 import Tile from "./Tile.js";
+import Pot from "./Pot.js";
 
 export default class Room {
   static WIDTH = CANVAS_WIDTH / Tile.TILE_SIZE - 2;
@@ -54,6 +55,7 @@ export default class Room {
    */
   constructor(player, isShifting = false) {
     this.player = player;
+    this.player.room = this;
     this.dimensions = new Vector(Room.WIDTH, Room.HEIGHT);
     this.sprites = Sprite.generateSpritesFromSpriteSheet(
       images.get(ImageName.Tiles),
@@ -314,6 +316,7 @@ export default class Room {
   generateObjects() {
     const objects = [];
 
+    // Add switch
     objects.push(
       new Switch(
         new Vector(Switch.WIDTH, Switch.HEIGHT),
@@ -330,6 +333,26 @@ export default class Room {
         this
       )
     );
+
+    // Add 3-5 random pots
+    const potCount = getRandomPositiveInteger(3, 5);
+    for (let i = 0; i < potCount; i++) {
+      objects.push(
+        new Pot(
+          new Vector(
+            getRandomPositiveInteger(
+              Room.LEFT_EDGE + Pot.WIDTH,
+              Room.RIGHT_EDGE - Pot.WIDTH * 2
+            ),
+            getRandomPositiveInteger(
+              Room.TOP_EDGE + Pot.HEIGHT,
+              Room.BOTTOM_EDGE - Pot.HEIGHT * 2
+            )
+          )
+        )
+      );
+    }
+
     objects.push(...this.doorways);
 
     return objects;
