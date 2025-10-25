@@ -13,12 +13,11 @@ import Enemy from "../entities/enemies/Enemy.js";
 export default class ThrownPot extends GameObject {
   static WIDTH = 32;
   static HEIGHT = 32;
-  static SPEED = 200; // Pixels per second
-  static MAX_DISTANCE = Tile.TILE_SIZE * 4; // Travel 4 tiles max
+  static SPEED = 200;
+  static MAX_DISTANCE = Tile.TILE_SIZE * 4;
   static DAMAGE = 1;
-  static POT_SPRITE_INDEX = 8; // Intact pot sprite
-  // Shatter animation sprites (adjust these based on your pots.png layout)
-  static SHATTER_SPRITES = [4, 5, 6, 7]; // Example: broken pot pieces
+  static POT_SPRITE_INDEX = 0;
+  static SHATTER_SPRITES = [4, 5, 6, 7]; // Adjust based on your pots.png
 
   /**
    * A pot that has been thrown by the player.
@@ -37,7 +36,9 @@ export default class ThrownPot extends GameObject {
     this.distanceTraveled = 0;
     this.isBroken = false;
 
-    // Generate sprites from pots.png
+    // Set up hitbox for collision detection
+    this.hitboxOffsets.set(8, 8, -16, -16);
+
     this.sprites = Sprite.generateSpritesFromSpriteSheet(
       images.get(ImageName.Pots),
       ThrownPot.WIDTH,
@@ -45,13 +46,18 @@ export default class ThrownPot extends GameObject {
     );
     this.currentFrame = ThrownPot.POT_SPRITE_INDEX;
 
-    // Breaking animation - using shatter sprites from pots.png
     this.breakAnimation = new Animation(ThrownPot.SHATTER_SPRITES, 0.1, 1);
     this.renderPriority = 0;
   }
 
   update(dt) {
-    super.update(dt);
+    // Update hitbox
+    this.hitbox.set(
+      this.position.x + this.hitboxOffsets.position.x,
+      this.position.y + this.hitboxOffsets.position.y,
+      this.dimensions.x + this.hitboxOffsets.dimensions.x,
+      this.dimensions.y + this.hitboxOffsets.dimensions.y
+    );
 
     if (this.isBroken) {
       this.breakAnimation.update(dt);
@@ -81,7 +87,7 @@ export default class ThrownPot extends GameObject {
 
     this.distanceTraveled += distance;
 
-    // Check for collisions
+    // Check for collisions AFTER moving
     this.checkCollisions();
 
     // Break if traveled too far
@@ -105,6 +111,11 @@ export default class ThrownPot extends GameObject {
   }
 
   checkCollisions() {
+    // Don't check collisions if already broken
+    if (this.isBroken) {
+      return;
+    }
+
     // Check wall collision
     if (
       this.position.x < Room.LEFT_EDGE ||
@@ -119,7 +130,9 @@ export default class ThrownPot extends GameObject {
     // Check enemy collision
     this.room.entities.forEach((entity) => {
       if (entity instanceof Enemy && !entity.isDead) {
-        if (this.didCollideWithEntity(entity.hitbox)) {
+        // Use didCollide on hitboxes
+        if (this.hitbox.didCollide(entity.hitbox)) {
+          console.log("Pot hit enemy!"); // Debug log
           entity.receiveDamage(ThrownPot.DAMAGE);
           this.break();
         }
@@ -130,7 +143,7 @@ export default class ThrownPot extends GameObject {
   break() {
     if (!this.isBroken) {
       this.isBroken = true;
-      sounds.play(SoundName.HitEnemy); // Use hit sound for now
+      sounds.play(SoundName.Shatter); // CHANGED from HitEnemy to Shatter
       this.breakAnimation.refresh();
     }
   }

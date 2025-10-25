@@ -105,6 +105,12 @@
       "path": "./assets/sounds/sword.wav",
       "size": 5,
       "volume": 0.1
+    },
+    {
+      "name": "shatter",
+      "path": "./assets/sounds/shatter.wav",
+      "size": 1,
+      "volume": 0.3
     }
   ]
 }

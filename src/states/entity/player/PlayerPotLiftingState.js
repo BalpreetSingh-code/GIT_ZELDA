@@ -15,19 +15,18 @@ export default class PlayerPotLiftingState extends State {
     this.pot = null;
 
     this.animation = {
-      [Direction.Up]: new Animation([8, 9, 10, 11], 0.1, 1),
-      [Direction.Down]: new Animation([0, 1, 2, 3], 0.1, 1),
-      [Direction.Left]: new Animation([12, 13, 14, 15], 0.1, 1),
-      [Direction.Right]: new Animation([4, 5, 6, 7], 0.1, 1),
+      [Direction.Up]: new Animation([8], 1),
+      [Direction.Down]: new Animation([0], 1),
+      [Direction.Left]: new Animation([12], 1),
+      [Direction.Right]: new Animation([4], 1),
     };
   }
 
   enter(parameters) {
     this.pot = parameters.pot;
 
-    // Set position offset BEFORE changing sprites
+    // Set position offset and sprites
     this.player.positionOffset = { x: 0, y: 0 };
-
     this.player.sprites = this.player.liftingSprites;
     this.player.currentAnimation = this.animation[this.player.direction];
     this.player.currentAnimation.refresh();
