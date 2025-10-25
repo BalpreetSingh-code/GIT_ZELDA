@@ -16,8 +16,8 @@ export default class ThrownPot extends GameObject {
   static SPEED = 200;
   static MAX_DISTANCE = Tile.TILE_SIZE * 4;
   static DAMAGE = 1;
-  static POT_SPRITE_INDEX = 0;
-  static SHATTER_SPRITES = [4, 5, 6, 7]; // Adjust based on your pots.png
+  static POT_SPRITE_INDEX = 8;
+  static SHATTER_SPRITES = [8, 9, 10, 11]; // Adjust based on your pots.png
 
   /**
    * A pot that has been thrown by the player.

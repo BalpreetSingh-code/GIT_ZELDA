@@ -334,23 +334,47 @@ export default class Room {
       )
     );
 
-    // Add 3-5 random pots
+    // Add 3-5 pots with collision checking
     const potCount = getRandomPositiveInteger(3, 5);
-    for (let i = 0; i < potCount; i++) {
-      objects.push(
-        new Pot(
-          new Vector(
-            getRandomPositiveInteger(
-              Room.LEFT_EDGE + Pot.WIDTH,
-              Room.RIGHT_EDGE - Pot.WIDTH * 2
-            ),
-            getRandomPositiveInteger(
-              Room.TOP_EDGE + Pot.HEIGHT,
-              Room.BOTTOM_EDGE - Pot.HEIGHT * 2
-            )
-          )
+    const MIN_DISTANCE = 32; // Minimum distance between pots (2 tiles)
+    let attempts = 0;
+    const MAX_ATTEMPTS = 50; // Prevent infinite loop
+
+    for (let i = 0; i < potCount && attempts < MAX_ATTEMPTS; i++) {
+      attempts++;
+
+      const newPosition = new Vector(
+        getRandomPositiveInteger(
+          Room.LEFT_EDGE + Pot.WIDTH,
+          Room.RIGHT_EDGE - Pot.WIDTH * 2
+        ),
+        getRandomPositiveInteger(
+          Room.TOP_EDGE + Pot.HEIGHT,
+          Room.BOTTOM_EDGE - Pot.HEIGHT * 2
         )
       );
+
+      // Check if this position is too close to existing pots
+      let tooClose = false;
+      for (let obj of objects) {
+        if (obj instanceof Pot) {
+          const distance = Math.sqrt(
+            Math.pow(newPosition.x - obj.position.x, 2) +
+              Math.pow(newPosition.y - obj.position.y, 2)
+          );
+
+          if (distance < MIN_DISTANCE) {
+            tooClose = true;
+            i--; // Try again for this pot
+            break;
+          }
+        }
+      }
+
+      // Only add pot if it's not too close to others
+      if (!tooClose) {
+        objects.push(new Pot(newPosition));
+      }
     }
 
     objects.push(...this.doorways);
