@@ -15,12 +15,18 @@ import Switch from "./Switch.js";
 import Tile from "./Tile.js";
 import Pot from "./Pot.js";
 
+/**
+ * Represents one room in the dungeon.
+ * Contains walls, floor, enemies, objects, and doorways.
+ */
 export default class Room {
+  // Room dimensions in tiles
   static WIDTH = CANVAS_WIDTH / Tile.TILE_SIZE - 2;
   static HEIGHT = Math.floor(CANVAS_HEIGHT / Tile.TILE_SIZE) - 2;
   static RENDER_OFFSET_X = (CANVAS_WIDTH - Room.WIDTH * Tile.TILE_SIZE) / 2;
   static RENDER_OFFSET_Y = (CANVAS_HEIGHT - Room.HEIGHT * Tile.TILE_SIZE) / 2;
 
+  // Bounds for entity movement
   static TOP_EDGE = Room.RENDER_OFFSET_Y + Tile.TILE_SIZE;
   static BOTTOM_EDGE =
     CANVAS_HEIGHT - Room.RENDER_OFFSET_Y - Tile.TILE_SIZE - 5;
@@ -33,6 +39,7 @@ export default class Room {
     Room.TOP_EDGE + (Room.BOTTOM_EDGE - Room.TOP_EDGE) / 2
   );
 
+  // Tile sprite indices
   static TILE_TOP_LEFT_CORNER = 3;
   static TILE_TOP_RIGHT_CORNER = 4;
   static TILE_BOTTOM_LEFT_CORNER = 22;
@@ -48,32 +55,38 @@ export default class Room {
   ];
 
   /**
-   * Represents one individual section of the dungeon complete
-   * with its own set of enemies and a switch that can open the doors.
-   *
-   * @param {Player} player
+   * Creates a new room with random layout.
+   * @param {Player} player The player character
+   * @param {boolean} isShifting Whether camera is transitioning
    */
   constructor(player, isShifting = false) {
     this.player = player;
     this.player.room = this;
     this.dimensions = new Vector(Room.WIDTH, Room.HEIGHT);
+    
+    // Load tile sprites
     this.sprites = Sprite.generateSpritesFromSpriteSheet(
       images.get(ImageName.Tiles),
       Tile.TILE_SIZE,
       Tile.TILE_SIZE
     );
+    
+    // Generate room contents
     this.tiles = this.generateWallsAndFloors();
     this.entities = this.generateEntities();
     this.doorways = this.generateDoorways();
     this.objects = this.generateObjects();
     this.renderQueue = this.buildRenderQueue();
 
-    // Used for drawing when this room is the next room, adjacent to the active.
+    // For drawing when shifting between rooms
     this.adjacentOffset = new Vector();
 
     this.isShifting = isShifting;
   }
 
+  /**
+   * Updates all entities and objects in the room.
+   */
   update(dt) {
     this.renderQueue = this.buildRenderQueue();
     this.cleanUpEntities();
@@ -82,6 +95,9 @@ export default class Room {
     this.updateObjects(dt);
   }
 
+  /**
+   * Renders tiles, then all entities and objects in correct order.
+   */
   render() {
     this.renderTiles();
 
@@ -91,18 +107,9 @@ export default class Room {
   }
 
   /**
-   * Order the entities by their renderPriority fields. If the renderPriority
-   * is the same, then sort the entities by their bottom positions. This will
-   * put them in an order such that entities higher on the screen will appear
-   * behind entities that are lower down.
-   *
-   * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort
-   *
-   * The spread operator (...) returns all the elements of an array separately
-   * so that you can pass them into functions or create new arrays. What we're
-   * doing below is combining both the entities and objects arrays into one.
-   *
-   * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Spread_syntax
+   * Sorts entities and objects by their Y position for proper layering.
+   * Things lower on screen appear in front of things higher up.
+   * @returns {Array} Sorted array of things to render
    */
   buildRenderQueue() {
     return [...this.entities, ...this.objects].sort((a, b) => {
@@ -110,11 +117,14 @@ export default class Room {
       const bottomA = a.hitbox.position.y + a.hitbox.dimensions.y;
       const bottomB = b.hitbox.position.y + b.hitbox.dimensions.y;
 
+      // First sort by render priority
       if (a.renderPriority < b.renderPriority) {
         order = -1;
       } else if (a.renderPriority > b.renderPriority) {
         order = 1;
-      } else if (bottomA < bottomB) {
+      } 
+      // Then by Y position (for depth illusion)
+      else if (bottomA < bottomB) {
         order = -1;
       } else {
         order = 1;
@@ -124,29 +134,38 @@ export default class Room {
     });
   }
 
+  /**
+   * Removes dead enemies from the room.
+   */
   cleanUpEntities() {
     this.entities = this.entities.filter((entity) => !entity.isDead);
   }
 
+  /**
+   * Updates all entities - handles combat and collision.
+   */
   updateEntities(dt) {
     this.entities.forEach((entity) => {
+      // Kill entity if health is 0
       if (entity.health <= 0) {
         if (!entity.isDead && entity.onDeath) {
-          entity.onDeath();
+          entity.onDeath(); // Might drop items
         }
         entity.isDead = true;
       }
 
-      // Disallow the player to control the character while shifting.
+      // Don't update player while room is transitioning
       if (!this.isShifting || (this.isShifting && entity !== this.player)) {
         entity.update(dt);
       }
 
+      // Check collisions with all objects
       this.objects.forEach((object) => {
         if (object.didCollideWithEntity(entity.hitbox)) {
           if (object.isCollidable) {
             object.onCollision(entity);
           }
+          // Let player pick up consumable items
           if (
             object.isConsumable &&
             !object.wasConsumed &&
@@ -157,15 +176,18 @@ export default class Room {
           }
         }
       });
-      // Since the player is technically always colliding with itself, skip it.
+      
+      // Don't check player against itself
       if (entity === this.player) {
         return;
       }
 
+      // Check if enemy was hit by sword
       if (entity.didCollideWithEntity(this.player.swordHitbox)) {
         entity.receiveDamage(this.player.damage);
       }
 
+      // Check if enemy hit player
       if (
         !entity.isDead &&
         this.player.didCollideWithEntity(entity.hitbox) &&
@@ -177,12 +199,18 @@ export default class Room {
     });
   }
 
+  /**
+   * Updates all objects like switches and pots.
+   */
   updateObjects(dt) {
     this.objects.forEach((object) => {
       object.update(dt);
     });
   }
 
+  /**
+   * Renders all floor and wall tiles.
+   */
   renderTiles() {
     this.tiles.forEach((tileRow) => {
       tileRow.forEach((tile) => {
@@ -192,12 +220,9 @@ export default class Room {
   }
 
   /**
-   * Uses the constants defined at the top of the class and determines which
-   * sprites to use for the walls and floor. Since there are several potential
-   * tiles to use for a piece of wall or floor, we can have a slightly different
-   * look each time we create a new room.
-   *
-   * @returns An array containing the walls and floors of the room, randomizing the tiles for visual variety.
+   * Creates the walls and floor for the room.
+   * Uses random tiles for variety.
+   * @returns {Array} 2D array of tile objects
    */
   generateWallsAndFloors() {
     const tiles = new Array();
@@ -208,6 +233,7 @@ export default class Room {
       for (let x = 0; x < this.dimensions.x; x++) {
         let tileId = Room.TILE_EMPTY;
 
+        // Place corners
         if (x === 0 && y === 0) {
           tileId = Room.TILE_TOP_LEFT_CORNER;
         } else if (x === 0 && y === this.dimensions.y - 1) {
@@ -217,8 +243,9 @@ export default class Room {
         } else if (x === this.dimensions.x - 1 && y === this.dimensions.y - 1) {
           tileId = Room.TILE_BOTTOM_RIGHT_CORNER;
         }
-        // Random left-hand walls, right walls, top, bottom, and floors.
+        // Place walls with gaps for doorways
         else if (x === 0) {
+          // Left wall - leave space for door
           if (
             y === Math.floor(this.dimensions.y / 2) ||
             y === Math.floor(this.dimensions.y / 2) + 1
@@ -231,6 +258,7 @@ export default class Room {
               ];
           }
         } else if (x === this.dimensions.x - 1) {
+          // Right wall - leave space for door
           if (
             y === Math.floor(this.dimensions.y / 2) ||
             y === Math.floor(this.dimensions.y / 2) + 1
@@ -243,6 +271,7 @@ export default class Room {
               ];
           }
         } else if (y === 0) {
+          // Top wall - leave space for door
           if (x === this.dimensions.x / 2 || x === this.dimensions.x / 2 - 1) {
             tileId = Room.TILE_EMPTY;
           } else {
@@ -252,6 +281,7 @@ export default class Room {
               ];
           }
         } else if (y === this.dimensions.y - 1) {
+          // Bottom wall - leave space for door
           if (x === this.dimensions.x / 2 || x === this.dimensions.x / 2 - 1) {
             tileId = Room.TILE_EMPTY;
           } else {
@@ -261,6 +291,7 @@ export default class Room {
               ];
           }
         } else {
+          // Random floor tile
           tileId =
             Room.TILE_FLOORS[
               Math.floor(Math.random() * Room.TILE_FLOORS.length)
@@ -283,7 +314,9 @@ export default class Room {
   }
 
   /**
-   * @returns An array of enemies for the player to fight.
+   * Creates enemies to populate the room.
+   * All enemies in a room are the same type.
+   * @returns {Array} Array of enemy entities
    */
   generateEntities() {
     const entities = new Array();
@@ -293,12 +326,10 @@ export default class Room {
       Tile.TILE_SIZE
     );
 
-    /**
-     * Choose a random enemy type and fill the room with only that type.
-     * This is more to make each room feel like a different room.
-     */
+    // Pick one enemy type for this room
     const enemyType = EnemyType[pickRandomElement(Object.keys(EnemyType))];
 
+    // Spawn 10 enemies
     for (let i = 0; i < 10; i++) {
       const enemy = EnemyFactory.createInstance(enemyType, sprites);
       enemy.room = this;
@@ -311,12 +342,13 @@ export default class Room {
   }
 
   /**
-   * @returns An array of objects for the player to interact with.
+   * Creates interactive objects like switches and pots.
+   * @returns {Array} Array of game objects
    */
   generateObjects() {
     const objects = [];
 
-    // Add switch
+    // Add switch to open doors
     objects.push(
       new Switch(
         new Vector(Switch.WIDTH, Switch.HEIGHT),
@@ -334,15 +366,16 @@ export default class Room {
       )
     );
 
-    // Add 3-5 pots with collision checking
+    // Add 3-5 pots randomly placed
     const potCount = getRandomPositiveInteger(3, 5);
-    const MIN_DISTANCE = 32; // Minimum distance between pots (2 tiles)
+    const MIN_DISTANCE = 32; // Pots must be at least 2 tiles apart
     let attempts = 0;
     const MAX_ATTEMPTS = 50; // Prevent infinite loop
 
     for (let i = 0; i < potCount && attempts < MAX_ATTEMPTS; i++) {
       attempts++;
 
+      // Try a random position
       const newPosition = new Vector(
         getRandomPositiveInteger(
           Room.LEFT_EDGE + Pot.WIDTH,
@@ -354,7 +387,7 @@ export default class Room {
         )
       );
 
-      // Check if this position is too close to existing pots
+      // Check if this spot is too close to other pots
       let tooClose = false;
       for (let obj of objects) {
         if (obj instanceof Pot) {
@@ -365,7 +398,7 @@ export default class Room {
 
           if (distance < MIN_DISTANCE) {
             tooClose = true;
-            i--; // Try again for this pot
+            i--; // Try this pot again
             break;
           }
         }
@@ -377,13 +410,15 @@ export default class Room {
       }
     }
 
+    // Add doorways last
     objects.push(...this.doorways);
 
     return objects;
   }
 
   /**
-   * @returns An array of the four directional doors.
+   * Creates doorways on all four sides of the room.
+   * @returns {Array} Array of doorway objects
    */
   generateDoorways() {
     const doorways = [];
@@ -424,18 +459,27 @@ export default class Room {
     return doorways;
   }
 
+  /**
+   * Opens all doorways in the room.
+   */
   openDoors() {
     this.doorways.forEach((doorway) => {
       doorway.open();
     });
   }
 
+  /**
+   * Closes all doorways in the room.
+   */
   closeDoors() {
     this.doorways.forEach((doorway) => {
       doorway.close();
     });
   }
 
+  /**
+   * Removes objects marked for cleanup (like picked up hearts).
+   */
   cleanUpObjects() {
     this.objects = this.objects.filter((object) => !object.cleanUp);
   }

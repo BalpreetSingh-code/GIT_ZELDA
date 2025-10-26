@@ -4,27 +4,32 @@ import ImageName from "../enums/ImageName.js";
 import { images } from "../globals.js";
 import Vector from "../../lib/Vector.js";
 
+/**
+ * Pot object that can be lifted, carried, and thrown by the player.
+ * Acts as a solid object until picked up, then becomes a projectile.
+ */
 export default class Pot extends GameObject {
-  static WIDTH = 32; // Sprite display size
-  static HEIGHT = 32; // Sprite display size
-  static SPRITE_INDEX = 8;
+  static WIDTH = 32; // Visual size of the pot sprite
+  static HEIGHT = 32;
+  static SPRITE_INDEX = 8; // Which sprite to use from the pot sprite sheet
 
   /**
-   * A pot that can be lifted, carried, and thrown by the player.
-   *
-   * @param {Vector} position The position where the pot should be placed.
+   * Creates a new pot object in the room.
+   * @param {Vector} position Where to place the pot
    */
   constructor(position) {
     super(new Vector(Pot.WIDTH, Pot.HEIGHT), position);
 
+    // Pots block movement and can be interacted with
     this.isSolid = true;
     this.isCollidable = true;
-    this.isLiftable = true;
+    this.isLiftable = true; // Player can pick this up
 
-    // Smaller hitbox at the bottom of the pot
-    // This creates a hitbox that is 16px wide and 12px tall at the bottom of the sprite
+    // Smaller hitbox at the bottom for better collision feel
+    // This makes it so you collide with the base, not the whole sprite
     this.hitboxOffsets.set(10, 24, -20, -24);
 
+    // Load pot sprites
     this.sprites = Sprite.generateSpritesFromSpriteSheet(
       images.get(ImageName.Pots),
       Pot.WIDTH,
@@ -32,12 +37,17 @@ export default class Pot extends GameObject {
     );
     this.currentFrame = Pot.SPRITE_INDEX;
 
+    // Track if player is carrying this pot
     this.isBeingCarried = false;
     this.carrier = null;
   }
 
+  /**
+   * Updates pot position and hitbox each frame.
+   * When carried, pot follows above the player's head.
+   */
   update(dt) {
-    // CRITICAL: Manually update the hitbox position and size
+    // Update hitbox position to match current pot position
     this.hitbox.set(
       this.position.x + this.hitboxOffsets.position.x,
       this.position.y + this.hitboxOffsets.position.y,
@@ -45,12 +55,12 @@ export default class Pot extends GameObject {
       this.dimensions.y + this.hitboxOffsets.dimensions.y
     );
 
+    // If being carried, position pot above carrier's head
     if (this.isBeingCarried && this.carrier) {
-      // Position pot above carrier's head
       this.position.x =
         this.carrier.position.x + this.carrier.dimensions.x / 2 - Pot.WIDTH / 2;
       this.position.y = this.carrier.position.y - Pot.HEIGHT + 10;
-      this.renderPriority = 1;
+      this.renderPriority = 1; // Draw on top of player
     }
   }
 }

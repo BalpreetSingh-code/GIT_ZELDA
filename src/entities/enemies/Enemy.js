@@ -12,18 +12,24 @@ import { didSucceedChance } from "../../../lib/Random.js";
 import Heart from "../../objects/Heart.js";
 import Vector from "../../../lib/Vector.js";
 
+/**
+ * Base class for all enemies in the game.
+ * Walks around randomly and damages player on contact.
+ */
 export default class Enemy extends GameEntity {
   static WIDTH = 16;
   static HEIGHT = 16;
 
   /**
-   * The enemy characters in the game that randomly
-   * walk around the room and can damage the player.
+   * Creates an enemy with random starting position.
+   * @param {Array} sprites Sprite array for this enemy type
    */
   constructor(sprites) {
     super();
 
     this.sprites = sprites;
+    
+    // Spawn at a random spot within room bounds
     this.position.x = getRandomPositiveInteger(
       Room.LEFT_EDGE,
       Room.RIGHT_EDGE - Tile.TILE_SIZE
@@ -38,16 +44,23 @@ export default class Enemy extends GameEntity {
     this.room = null;
   }
 
+  /**
+   * Takes damage and plays hit sound.
+   * @param {number} damage Amount of health to lose
+   */
   receiveDamage(damage) {
     this.health -= damage;
     sounds.play(SoundName.HitEnemy);
   }
 
   /**
-   * Called when the enemy dies. Has a chance to drop a heart.
+   * Called when enemy dies (health reaches 0).
+   * Has a 30% chance to drop a heart for the player.
    */
   onDeath() {
+    // 30% chance to drop a heart
     if (didSucceedChance(0.3) && this.room) {
+      // Spawn heart at enemy's center position
       const heart = new Heart(
         new Vector(
           this.position.x + this.dimensions.x / 2 - Heart.WIDTH / 2,
@@ -58,6 +71,11 @@ export default class Enemy extends GameEntity {
     }
   }
 
+  /**
+   * Sets up the enemy's state machine with idle and walking states.
+   * @param {Object} animations Animation definitions for this enemy
+   * @returns {StateMachine} Configured state machine
+   */
   initializeStateMachine(animations) {
     const stateMachine = new StateMachine();
 

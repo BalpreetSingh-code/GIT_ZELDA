@@ -6,21 +6,20 @@ import PlayerStateName from "../../../enums/PlayerStateName.js";
 import ThrownPot from "../../../objects/ThrownPot.js";
 import { timer } from "../../../globals.js";
 
+/**
+ * State where the player throws the pot they're carrying.
+ * Quick animation then back to idle state.
+ */
 export default class PlayerPotThrowingState extends State {
-  static THROW_DURATION = 0.2; // Duration of throw animation
+  static THROW_DURATION = 0.2; // How long throw animation lasts
 
-  /**
-   * In this state, the player throws the pot they're carrying.
-   *
-   * @param {Player} player
-   */
   constructor(player) {
     super();
 
     this.player = player;
     this.pot = null;
 
-    // Throwing animation (reverse of lifting)
+    // Throwing animation is the lifting animation played backwards
     this.animation = {
       [Direction.Up]: new Animation([11, 10, 9, 8], 0.05, 1),
       [Direction.Down]: new Animation([3, 2, 1, 0], 0.05, 1),
@@ -29,13 +28,17 @@ export default class PlayerPotThrowingState extends State {
     };
   }
 
+  /**
+   * Starts throw animation and creates the thrown pot projectile.
+   * @param {Object} parameters Contains the pot to throw
+   */
   enter(parameters) {
     this.pot = parameters.pot;
     this.player.positionOffset = { x: 0, y: 0 };
     this.player.sprites = this.player.liftingSprites;
     this.player.currentAnimation = this.animation[this.player.direction];
 
-    // Create a thrown pot projectile
+    // Create a new thrown pot object going in player's direction
     if (this.pot && this.player.room) {
       const thrownPot = new ThrownPot(
         this.pot.position.x,
@@ -45,7 +48,7 @@ export default class PlayerPotThrowingState extends State {
       );
       this.player.room.objects.push(thrownPot);
 
-      // Remove the carried pot
+      // Remove the pot the player was carrying
       this.pot.cleanUp = true;
       this.pot.isBeingCarried = false;
       this.pot.carrier = null;
@@ -54,10 +57,16 @@ export default class PlayerPotThrowingState extends State {
     this.startTimer();
   }
 
+  /**
+   * Just wait for animation to finish, no player control during throw.
+   */
   update(dt) {
     // Stay in this state until animation completes
   }
 
+  /**
+   * Return to idle state after throw is done.
+   */
   async startTimer() {
     await timer.wait(PlayerPotThrowingState.THROW_DURATION);
 
